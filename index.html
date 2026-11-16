@@ -1,0 +1,622 @@
+<html>
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NAVS-Cloud | Lộ trình A1 → B1 Cá Nhân</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+    .perspective { perspective: 1000px; }
+    .preserve-3d { transform-style: preserve-3d; transition: transform 0.5s; }
+    .rotate-y-180 { transform: rotateY(180deg); }
+    .backface-hidden { backface-visibility: hidden; }
+  </style>
+</head>
+<body class="text-slate-800 pb-20 md:pb-8">
+
+  <!-- TOP HEADER -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-30">
+    <div class="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
+      <div class="flex items-center gap-2.5">
+        <div class="w-9 h-9 rounded-xl bg-emerald-600 text-white font-extrabold flex items-center justify-center shadow-sm">N</div>
+        <div>
+          <h1 class="font-bold text-slate-900 leading-tight">NAVS-Cloud <span class="text-xs font-semibold px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded-full">A1 → B1</span></h1>
+          <p class="text-[11px] text-slate-500 flex items-center gap-1.5">
+            <span id="db-status-dot" class="w-2 h-2 rounded-full bg-amber-400 inline-block"></span>
+            <span id="db-status-text">Đang kết nối Supabase...</span>
+          </p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <select id="voice-accent" class="text-xs font-semibold bg-slate-100 border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-700">
+          <option value="en-US">🇺🇸 Giọng Mỹ (US)</option>
+          <option value="en-GB">🇬🇧 Giọng Anh (UK)</option>
+        </select>
+        <button onclick="seedInitialData()" id="btn-seed" class="hidden text-xs font-semibold bg-amber-500 hover:bg-amber-600 text-white px-3 py-1.5 rounded-lg shadow-sm transition">
+          ⚡ Nạp dữ liệu mẫu Tuần 1
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN CONTAINER -->
+  <main class="max-w-5xl mx-auto px-4 pt-6">
+    
+    <!-- PROGRESS BANNER -->
+    <div class="bg-gradient-to-r from-emerald-600 to-teal-600 rounded-2xl p-5 text-white shadow-md mb-6">
+      <div class="flex flex-wrap items-center justify-between gap-4 mb-3">
+        <div>
+          <p class="text-emerald-100 text-xs font-semibold uppercase tracking-wider">Lộ trình 383 ngày • 55 Tuần • 3.000 từ</p>
+          <h2 class="text-xl font-bold mt-0.5">Tiến độ chinh phục mục tiêu B1</h2>
+        </div>
+        <div class="text-right">
+          <span id="progress-count" class="text-2xl font-extrabold">0 / 767</span>
+          <span id="progress-percent" class="text-sm text-emerald-100 ml-1">(0.0%)</span>
+        </div>
+      </div>
+      <div class="w-full bg-emerald-900/40 rounded-full h-2.5 overflow-hidden">
+        <div id="progress-bar" class="bg-white h-2.5 rounded-full transition-all duration-500" style="width: 0%"></div>
+      </div>
+    </div>
+
+    <!-- NAVIGATION TABS -->
+    <div class="flex gap-2 overflow-x-auto pb-2 mb-6 border-b border-slate-200">
+      <button onclick="switchTab('roadmap')" id="tab-roadmap" class="tab-btn px-4 py-2 rounded-xl font-semibold text-sm bg-emerald-600 text-white whitespace-nowrap">📅 Lộ trình học</button>
+      <button onclick="switchTab('translate')" id="tab-translate" class="tab-btn px-4 py-2 rounded-xl font-semibold text-sm bg-white text-slate-600 hover:bg-slate-100 whitespace-nowrap">✍️ Chép câu Việt → Anh</button>
+      <button onclick="switchTab('vocab')" id="tab-vocab" class="tab-btn px-4 py-2 rounded-xl font-semibold text-sm bg-white text-slate-600 hover:bg-slate-100 whitespace-nowrap">🗂️ Flashcard Từ vựng</button>
+      <button onclick="switchTab('knowledge')" id="tab-knowledge" class="tab-btn px-4 py-2 rounded-xl font-semibold text-sm bg-white text-slate-600 hover:bg-slate-100 whitespace-nowrap">🗣️ Phát âm IPA & Ngữ pháp</button>
+      <button onclick="switchTab('admin')" id="tab-admin" class="tab-btn px-4 py-2 rounded-xl font-semibold text-sm bg-white text-slate-600 hover:bg-slate-100 whitespace-nowrap">➕ Nạp thêm dữ liệu</button>
+    </div>
+
+    <!-- TAB 1: ROADMAP -->
+    <section id="view-roadmap" class="view-section">
+      <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+        <div class="flex items-center gap-2">
+          <label class="text-sm font-semibold text-slate-700">Chọn Tuần:</label>
+          <select id="week-selector" onchange="loadRoadmapByWeek()" class="bg-white border border-slate-300 rounded-xl px-3 py-2 text-sm font-bold text-slate-800 shadow-sm"></select>
+        </div>
+        <span id="week-summary" class="text-xs font-medium text-slate-500 bg-white px-3 py-1.5 rounded-lg border border-slate-200">Đang tải...</span>
+      </div>
+
+      <div id="roadmap-container" class="space-y-4"></div>
+    </section>
+
+    <!-- TAB 2: VIETNAMESE TO ENGLISH TRANSLATION DRILL -->
+    <section id="view-translate" class="view-section hidden">
+      <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm max-w-2xl mx-auto">
+        <div class="flex items-center justify-between mb-4">
+          <span id="drill-badge" class="text-xs font-bold px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700">Ngày 1 • Động từ To Be</span>
+          <span id="drill-counter" class="text-xs font-semibold text-slate-500">Câu 1 / 1</span>
+        </div>
+
+        <p class="text-xs font-semibold text-slate-400 uppercase mb-1">Dịch câu sau sang tiếng Anh:</p>
+        <h3 id="drill-vi-text" class="text-xl font-bold text-slate-900 mb-5 leading-relaxed">Đang tải dữ liệu câu luyện dịch...</h3>
+
+        <textarea id="drill-input" rows="2" placeholder="Nhập câu tiếng Anh của bạn tại đây..." class="w-full border-2 border-slate-200 focus:border-emerald-500 focus:outline-none rounded-xl p-3.5 text-base font-medium text-slate-800 mb-3"></textarea>
+
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div class="flex gap-2">
+            <button onclick="checkTranslation()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-5 py-2.5 rounded-xl text-sm shadow-sm transition">Kiểm tra (Enter)</button>
+            <button onclick="showHint()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold px-3.5 py-2.5 rounded-xl text-sm transition">💡 Gợi ý</button>
+          </div>
+          <div class="flex gap-2">
+            <button onclick="prevDrill()" class="px-3 py-2 rounded-xl border border-slate-200 text-sm font-semibold hover:bg-slate-50">← Trước</button>
+            <button onclick="nextDrill()" class="px-3 py-2 rounded-xl border border-slate-200 text-sm font-semibold hover:bg-slate-50">Tiếp →</button>
+          </div>
+        </div>
+
+        <!-- FEEDBACK AREA -->
+        <div id="drill-feedback" class="hidden mt-5 p-4 rounded-xl border"></div>
+      </div>
+    </section>
+
+    <!-- TAB 3: VOCABULARY FLASHCARDS -->
+    <section id="view-vocab" class="view-section hidden">
+      <div class="max-w-lg mx-auto">
+        <div class="flex items-center justify-between mb-4">
+          <select id="vocab-topic-filter" onchange="filterVocab()" class="bg-white border border-slate-300 rounded-xl px-3 py-2 text-sm font-semibold text-slate-700">
+            <option value="ALL">Tất cả chủ đề</option>
+          </select>
+          <span id="vocab-counter" class="text-xs font-semibold text-slate-500">0 / 0</span>
+        </div>
+
+        <div onclick="flipCard()" class="perspective cursor-pointer h-72 w-full mb-4">
+          <div id="flashcard-inner" class="preserve-3d relative w-full h-full">
+            <!-- FRONT -->
+            <div class="backface-hidden absolute inset-0 bg-white rounded-3xl border border-slate-200 shadow-sm p-6 flex flex-col items-center justify-center text-center">
+              <span id="fc-topic" class="text-xs font-bold text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full mb-3">Chủ đề</span>
+              <h3 id="fc-word" class="text-3xl font-extrabold text-slate-900 mb-1">Loading...</h3>
+              <p id="fc-ipa" class="text-slate-500 font-mono text-sm mb-4">/ipa/</p>
+              <button onclick="event.stopPropagation(); speakCurrentWord()" class="bg-slate-100 hover:bg-emerald-100 text-slate-700 hover:text-emerald-700 px-4 py-2 rounded-full text-xs font-bold flex items-center gap-1.5 transition">
+                🔊 Nghe phát âm
+              </button>
+              <p class="text-[11px] text-slate-400 mt-5">Bấm vào thẻ để lật xem nghĩa</p>
+            </div>
+            <!-- BACK -->
+            <div class="backface-hidden rotate-y-180 absolute inset-0 bg-slate-900 text-white rounded-3xl shadow-md p-6 flex flex-col items-center justify-center text-center">
+              <span id="fc-type" class="text-xs uppercase tracking-wider text-emerald-400 font-bold mb-1">noun</span>
+              <h3 id="fc-meaning" class="text-2xl font-bold mb-4">Nghĩa tiếng Việt</h3>
+              <div class="bg-slate-800/80 rounded-xl p-3.5 w-full text-left">
+                <p id="fc-ex-en" class="text-sm font-medium text-emerald-300 mb-1">Example sentence</p>
+                <p id="fc-ex-vi" class="text-xs text-slate-300">Câu dịch ví dụ</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex justify-center gap-3">
+          <button onclick="prevCard()" class="px-5 py-2.5 bg-white border border-slate-200 rounded-xl font-semibold text-sm hover:bg-slate-50">← Thẻ trước</button>
+          <button onclick="nextCard()" class="px-5 py-2.5 bg-emerald-600 text-white rounded-xl font-semibold text-sm hover:bg-emerald-700">Thẻ tiếp theo →</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 4: IPA & GRAMMAR -->
+    <section id="view-knowledge" class="view-section hidden">
+      <div id="knowledge-container" class="grid md:grid-cols-2 gap-4"></div>
+    </section>
+
+    <!-- TAB 5: BULK DATA IMPORTER -->
+    <section id="view-admin" class="view-section hidden">
+      <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-6">
+        <div>
+          <h3 class="text-lg font-bold text-slate-900">Trình nạp dữ liệu hàng loạt lên Cloud (Supabase)</h3>
+          <p class="text-sm text-slate-500">Dữ liệu nạp tại đây sẽ lưu vĩnh viễn trên đám mây và đồng bộ mọi thiết bị.</p>
+        </div>
+
+        <!-- IMPORT TRANSLATION DRILLS -->
+        <div class="border-t border-slate-100 pt-5">
+          <h4 class="font-bold text-sm text-indigo-700 mb-1">1. Nạp câu luyện chép Việt → Anh</h4>
+          <p class="text-xs text-slate-500 mb-2">Mỗi dòng 1 câu theo định dạng: <code class="bg-slate-100 px-1.5 py-0.5 rounded">Ngày | Chủ đề | Câu tiếng Việt | Đáp án tiếng Anh | Đáp án phụ (nếu có)</code></p>
+          <textarea id="import-drills-text" rows="4" placeholder="1 | Động từ to be | Tôi là một sinh viên kỹ thuật. | I am an engineering student. | I'm an engineering student." class="w-full border border-slate-300 rounded-xl p-3 text-xs font-mono mb-2"></textarea>
+          <button onclick="importDrills()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-4 py-2 rounded-xl">Lưu câu luyện dịch lên Cloud</button>
+        </div>
+
+        <!-- IMPORT VOCABULARY -->
+        <div class="border-t border-slate-100 pt-5">
+          <h4 class="font-bold text-sm text-emerald-700 mb-1">2. Nạp từ vựng mới</h4>
+          <p class="text-xs text-slate-500 mb-2">Mỗi dòng 1 từ theo định dạng: <code class="bg-slate-100 px-1.5 py-0.5 rounded">Chủ đề | Từ tiếng Anh | Phiên âm IPA | Loại từ | Nghĩa tiếng Việt | Câu ví dụ EN | Dịch ví dụ VI</code></p>
+          <textarea id="import-vocab-text" rows="4" placeholder="01. Số | twenty | /ˈtwen.ti/ | num | số 20 | I am twenty years old. | Tôi hai mươi tuổi." class="w-full border border-slate-300 rounded-xl p-3 text-xs font-mono mb-2"></textarea>
+          <button onclick="importVocab()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-2 rounded-xl">Lưu từ vựng lên Cloud</button>
+        </div>
+
+        <!-- IMPORT ROADMAP TASKS -->
+        <div class="border-t border-slate-100 pt-5">
+          <h4 class="font-bold text-sm text-teal-700 mb-1">3. Nạp nhiệm vụ Lộ trình (Tuần 2 → Tuần 55)</h4>
+          <p class="text-xs text-slate-500 mb-2">Mỗi dòng 1 nhiệm vụ: <code class="bg-slate-100 px-1.5 py-0.5 rounded">Số tuần | Số ngày | LOẠI (TỪ VỰNG/PHÁT ÂM/LÝ THUYẾT/BÀI TẬP/ÔN TẬP) | Nội dung nhiệm vụ</code></p>
+          <textarea id="import-tasks-text" rows="4" placeholder="2 | 8 | TỪ VỰNG | Học 15 từ – 04. Gia đình" class="w-full border border-slate-300 rounded-xl p-3 text-xs font-mono mb-2"></textarea>
+          <button onclick="importTasks()" class="bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold px-4 py-2 rounded-xl">Lưu nhiệm vụ lộ trình lên Cloud</button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    // KẾT NỐI SUPABASE CỦA BẠN
+    const SUPABASE_URL = 'https://vowpdbwscbhmsjidlmpe.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_Q9vtbeB6pYF_lb_mCminqQ_TdEX_atA';
+    const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    let allDrills = [];
+    let currentDrillIdx = 0;
+    let allVocab = [];
+    let filteredVocab = [];
+    let currentCardIdx = 0;
+
+    // KHỞI TẠO
+    window.addEventListener('DOMContentLoaded', async () => {
+      initWeekSelector();
+      await checkConnectionAndStats();
+      await loadRoadmapByWeek();
+      await loadDrills();
+      await loadVocab();
+      await loadKnowledge();
+
+      document.getElementById('drill-input').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          checkTranslation();
+        }
+      });
+    });
+
+    function initWeekSelector() {
+      const sel = document.getElementById('week-selector');
+      for (let w = 1; w <= 55; w++) {
+        const opt = document.createElement('option');
+        opt.value = w;
+        opt.textContent = `Tuần ${w} (Ngày ${(w-1)*7 + 1} – ${Math.min(w*7, 383)})`;
+        sel.appendChild(opt);
+      }
+    }
+
+    async function checkConnectionAndStats() {
+      const { count: totalCount, error } = await db.from('roadmap_tasks').select('*', { count: 'exact', head: true });
+      const dot = document.getElementById('db-status-dot');
+      const txt = document.getElementById('db-status-text');
+
+      if (error) {
+        dot.className = 'w-2 h-2 rounded-full bg-red-500 inline-block';
+        txt.textContent = 'Lỗi kết nối SQL (Kiểm tra lại bước chạy bảng)';
+        return;
+      }
+
+      dot.className = 'w-2 h-2 rounded-full bg-emerald-500 inline-block';
+      txt.textContent = 'Đã đồng bộ Cloud (Singapore)';
+
+      if (totalCount === 0) {
+        document.getElementById('btn-seed').classList.remove('hidden');
+      }
+
+      const { count: doneCount } = await db.from('roadmap_tasks').select('*', { count: 'exact', head: true }).eq('is_completed', true);
+      const completed = doneCount || 0;
+      const pct = ((completed / 767) * 100).toFixed(1);
+      document.getElementById('progress-count').textContent = `${completed} / 767`;
+      document.getElementById('progress-percent').textContent = `(${pct}%)`;
+      document.getElementById('progress-bar').style.width = `${Math.min(pct, 100)}%`;
+    }
+
+    // LỘ TRÌNH HỌC
+    async function loadRoadmapByWeek() {
+      const week = parseInt(document.getElementById('week-selector').value);
+      const container = document.getElementById('roadmap-container');
+      container.innerHTML = '<p class="text-sm text-slate-400">Đang tải dữ liệu từ đám mây...</p>';
+
+      const { data, error } = await db.from('roadmap_tasks').select('*').eq('week_num', week).order('day_num', { ascending: true }).order('id', { ascending: true });
+
+      if (error || !data || data.length === 0) {
+        document.getElementById('week-summary').textContent = 'Chưa có dữ liệu tuần này';
+        container.innerHTML = `<div class="bg-white p-6 rounded-2xl border border-slate-200 text-center text-sm text-slate-500">Tuần ${week} chưa được nạp dữ liệu. Bạn có thể bấm nút <b>"Nạp dữ liệu mẫu Tuần 1"</b> ở góc trên hoặc vào tab <b>"Nạp thêm dữ liệu"</b> để bổ sung.</div>`;
+        return;
+      }
+
+      const doneInWeek = data.filter(t => t.is_completed).length;
+      document.getElementById('week-summary').textContent = `Hoàn thành: ${doneInWeek}/${data.length} nhiệm vụ`;
+
+      // Gom nhóm theo ngày
+      const grouped = {};
+      data.forEach(item => {
+        if (!grouped[item.day_num]) grouped[item.day_num] = [];
+        grouped[item.day_num].push(item);
+      });
+
+      const badgeColors = {
+        'TỪ VỰNG': 'bg-emerald-100 text-emerald-700',
+        'LÝ THUYẾT': 'bg-sky-100 text-sky-700',
+        'BÀI TẬP': 'bg-green-100 text-green-700',
+        'PHÁT ÂM': 'bg-amber-100 text-amber-700',
+        'ÔN TẬP': 'bg-purple-100 text-purple-700'
+      };
+
+      container.innerHTML = Object.keys(grouped).map(day => {
+        const tasksHtml = grouped[day].map(t => `
+          <label class="flex items-start gap-3 p-3 rounded-xl hover:bg-slate-50 cursor-pointer border border-transparent hover:border-slate-200 transition">
+            <input type="checkbox" ${t.is_completed ? 'checked' : ''} onchange="toggleTask(${t.id}, this.checked)" class="mt-1 w-4 h-4 accent-emerald-600 rounded cursor-pointer" />
+            <div class="flex-1">
+              <span class="text-[11px] font-bold px-2 py-0.5 rounded ${badgeColors[t.task_type] || 'bg-slate-100 text-slate-700'} mr-2">${t.task_type}</span>
+              <span class="text-sm font-medium ${t.is_completed ? 'line-through text-slate-400' : 'text-slate-800'}">${t.title}</span>
+            </div>
+          </label>
+        `).join('');
+
+        return `
+          <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+            <div class="bg-emerald-50/70 px-4 py-2.5 border-b border-emerald-100 font-bold text-sm text-emerald-900">Ngày ${day}</div>
+            <div class="p-2 divide-y divide-slate-100">${tasksHtml}</div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    async function toggleTask(id, isCompleted) {
+      await db.from('roadmap_tasks').update({ is_completed: isCompleted }).eq('id', id);
+      await checkConnectionAndStats();
+      await loadRoadmapByWeek();
+    }
+
+    // CHÉP CÂU VIỆT -> ANH
+    async function loadDrills() {
+      const { data } = await db.from('translation_drills').select('*').order('day_num', { ascending: true }).order('id', { ascending: true });
+      allDrills = data || [];
+      renderDrill();
+    }
+
+    function renderDrill() {
+      if (allDrills.length === 0) {
+        document.getElementById('drill-vi-text').textContent = 'Chưa có câu luyện dịch. Hãy bấm nút "Nạp dữ liệu mẫu Tuần 1" ở góc trên hoặc tự thêm ở tab Nạp dữ liệu.';
+        return;
+      }
+      const item = allDrills[currentDrillIdx];
+      document.getElementById('drill-badge').textContent = `Ngày ${item.day_num} • ${item.topic || 'Luyện dịch'}`;
+      document.getElementById('drill-counter').textContent = `Câu ${currentDrillIdx + 1} / ${allDrills.length}`;
+      document.getElementById('drill-vi-text').textContent = item.vi_sentence;
+      document.getElementById('drill-input').value = '';
+      document.getElementById('drill-feedback').classList.add('hidden');
+    }
+
+    function normalizeText(str) {
+      return str.toLowerCase().replace(/[.,!?;:'"()]/g, '').replace(/\s+/g, ' ').trim();
+    }
+
+    function checkTranslation() {
+      if (allDrills.length === 0) return;
+      const item = allDrills[currentDrillIdx];
+      const userRaw = document.getElementById('drill-input').value.trim();
+      if (!userRaw) return;
+
+      const userNorm = normalizeText(userRaw);
+      const validList = [item.en_answer, ...(item.alt_answers ? item.alt_answers.split('|') : [])].map(s => normalizeText(s));
+      const isExact = validList.includes(userNorm);
+
+      // So sánh từng từ với đáp án chính
+      const targetWords = item.en_answer.split(/\s+/);
+      const userWords = userRaw.split(/\s+/);
+      const diffHtml = targetWords.map((w, idx) => {
+        const uW = userWords[idx] ? normalizeText(userWords[idx]) : '';
+        const tW = normalizeText(w);
+        if (uW === tW) {
+          return `<span class="text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded font-semibold">${w}</span>`;
+        } else {
+          return `<span class="text-red-700 bg-red-100 px-1.5 py-0.5 rounded font-semibold underline decoration-wavy">${w}</span>`;
+        }
+      }).join(' ');
+
+      const fb = document.getElementById('drill-feedback');
+      fb.classList.remove('hidden');
+      if (isExact) {
+        fb.className = 'mt-5 p-4 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-900';
+        fb.innerHTML = `
+          <div class="font-bold text-sm mb-1">✅ Chính xác hoàn toàn!</div>
+          <p class="text-sm font-semibold text-emerald-800">${item.en_answer}</p>
+          ${item.grammar_note ? `<p class="text-xs text-emerald-700 mt-1">💡 ${item.grammar_note}</p>` : ''}
+        `;
+        speakText(item.en_answer);
+      } else {
+        fb.className = 'mt-5 p-4 rounded-xl border border-amber-200 bg-amber-50 text-slate-800';
+        fb.innerHTML = `
+          <div class="font-bold text-sm text-amber-800 mb-2">⚠️ Đối chiếu từng từ với đáp án chuẩn:</div>
+          <div class="flex flex-wrap gap-1.5 text-sm mb-2">${diffHtml}</div>
+          ${item.alt_answers ? `<p class="text-xs text-slate-600">Cách viết khác chấp nhận: <b>${item.alt_answers}</b></p>` : ''}
+          ${item.grammar_note ? `<p class="text-xs text-slate-600 mt-1">💡 ${item.grammar_note}</p>` : ''}
+        `;
+      }
+    }
+
+    function showHint() {
+      if (allDrills.length === 0) return;
+      const item = allDrills[currentDrillIdx];
+      const hint = item.en_answer.split(' ').map(w => w[0] + '_'.repeat(Math.max(w.length - 1, 1))).join(' ');
+      const fb = document.getElementById('drill-feedback');
+      fb.classList.remove('hidden');
+      fb.className = 'mt-5 p-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 text-xs font-mono';
+      fb.textContent = `Gợi ý khung từ: ${hint}`;
+    }
+
+    function nextDrill() {
+      if (allDrills.length === 0) return;
+      currentDrillIdx = (currentDrillIdx + 1) % allDrills.length;
+      renderDrill();
+    }
+
+    function prevDrill() {
+      if (allDrills.length === 0) return;
+      currentDrillIdx = (currentDrillIdx - 1 + allDrills.length) % allDrills.length;
+      renderDrill();
+    }
+
+    // FLASHCARD TỪ VỰNG
+    async function loadVocab() {
+      const { data } = await db.from('vocabulary_bank').select('*').order('id', { ascending: true });
+      allVocab = data || [];
+      const topics = [...new Set(allVocab.map(v => v.topic))];
+      const filter = document.getElementById('vocab-topic-filter');
+      filter.innerHTML = '<option value="ALL">Tất cả chủ đề</option>' + topics.map(t => `<option value="${t}">${t}</option>`).join('');
+      filterVocab();
+    }
+
+    function filterVocab() {
+      const topic = document.getElementById('vocab-topic-filter').value;
+      filteredVocab = topic === 'ALL' ? allVocab : allVocab.filter(v => v.topic === topic);
+      currentCardIdx = 0;
+      renderCard();
+    }
+
+    function renderCard() {
+      document.getElementById('flashcard-inner').classList.remove('rotate-y-180');
+      if (filteredVocab.length === 0) {
+        document.getElementById('fc-word').textContent = 'Chưa có từ vựng';
+        document.getElementById('fc-ipa').textContent = 'Bấm Nạp dữ liệu mẫu Tuần 1';
+        document.getElementById('vocab-counter').textContent = '0 / 0';
+        return;
+      }
+      const v = filteredVocab[currentCardIdx];
+      document.getElementById('vocab-counter').textContent = `${currentCardIdx + 1} / ${filteredVocab.length}`;
+      document.getElementById('fc-topic').textContent = v.topic;
+      document.getElementById('fc-word').textContent = v.word;
+      document.getElementById('fc-ipa').textContent = v.ipa || '';
+      document.getElementById('fc-type').textContent = v.word_type || 'vocab';
+      document.getElementById('fc-meaning').textContent = v.meaning;
+      document.getElementById('fc-ex-en').textContent = v.example_en || '';
+      document.getElementById('fc-ex-vi').textContent = v.example_vi || '';
+    }
+
+    function flipCard() {
+      document.getElementById('flashcard-inner').classList.toggle('rotate-y-180');
+    }
+
+    function nextCard() {
+      if (filteredVocab.length === 0) return;
+      currentCardIdx = (currentCardIdx + 1) % filteredVocab.length;
+      renderCard();
+    }
+
+    function prevCard() {
+      if (filteredVocab.length === 0) return;
+      currentCardIdx = (currentCardIdx - 1 + filteredVocab.length) % filteredVocab.length;
+      renderCard();
+    }
+
+    function speakCurrentWord() {
+      if (filteredVocab.length > 0) speakText(filteredVocab[currentCardIdx].word);
+    }
+
+    function speakText(text) {
+      if (!('speechSynthesis' in window)) return;
+      window.speechSynthesis.cancel();
+      const utter = new SpeechSynthesisUtterance(text);
+      utter.lang = document.getElementById('voice-accent').value;
+      utter.rate = 0.92;
+      window.speechSynthesis.speak(utter);
+    }
+
+    // PHÁT ÂM & NGỮ PHÁP
+    async function loadKnowledge() {
+      const { data } = await db.from('knowledge_base').select('*').order('id', { ascending: true });
+      const container = document.getElementById('knowledge-container');
+      if (!data || data.length === 0) {
+        container.innerHTML = '<p class="text-sm text-slate-500">Chưa có dữ liệu ngữ pháp & IPA. Hãy bấm Nạp dữ liệu mẫu Tuần 1.</p>';
+        return;
+      }
+      container.innerHTML = data.map(k => `
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+          <span class="text-[11px] font-bold px-2.5 py-0.5 rounded-full ${k.category === 'PHÁT ÂM' ? 'bg-amber-100 text-amber-800' : 'bg-sky-100 text-sky-800'}">${k.category}</span>
+          <h4 class="font-bold text-base text-slate-900 mt-2 mb-1">${k.title}</h4>
+          <p class="text-xs text-slate-600 mb-3">${k.summary || ''}</p>
+          <div class="bg-slate-50 p-3 rounded-xl text-xs font-mono text-slate-800 mb-2">${k.formula_or_guide || ''}</div>
+          <p class="text-xs text-emerald-700 font-medium">${k.examples || ''}</p>
+        </div>
+      `).join('');
+    }
+
+    // NẠP DỮ LIỆU MẪU TUẦN 1 TỪ FILE PDF CỦA BẠN
+    async function seedInitialData() {
+      const btn = document.getElementById('btn-seed');
+      btn.disabled = true;
+      btn.textContent = 'Đang đẩy dữ liệu lên Cloud...';
+
+      const week1Tasks = [
+        { week_num: 1, day_num: 1, task_type: 'TỪ VỰNG', title: 'Học 15 từ – 01. Số (15 từ)' },
+        { week_num: 1, day_num: 1, task_type: 'LÝ THUYẾT', title: 'Lý thuyết ngữ pháp: Động từ "to be"' },
+        { week_num: 1, day_num: 1, task_type: 'BÀI TẬP', title: 'Bài tập ngữ pháp: Động từ "to be"' },
+        { week_num: 1, day_num: 1, task_type: 'PHÁT ÂM', title: 'Phát âm: /ɪ/ – nguyên âm ngắn, lưỡi cao nhưng thả lỏng' },
+        { week_num: 1, day_num: 2, task_type: 'TỪ VỰNG', title: 'Học 15 từ – 01. Số (tiếp theo)' },
+        { week_num: 1, day_num: 2, task_type: 'PHÁT ÂM', title: 'Phát âm: /æ/ – nguyên âm ngắn, mở rộng' },
+        { week_num: 1, day_num: 3, task_type: 'TỪ VỰNG', title: 'Học 15 từ – 01. Số (tiếp theo)' },
+        { week_num: 1, day_num: 3, task_type: 'PHÁT ÂM', title: 'Phát âm: /ʌ/ – nguyên âm ngắn, không tròn môi, lưỡi ở giữa' },
+        { week_num: 1, day_num: 4, task_type: 'TỪ VỰNG', title: 'Học 15 từ – 01. Số + 02. Màu sắc' },
+        { week_num: 1, day_num: 4, task_type: 'LÝ THUYẾT', title: 'Lý thuyết ngữ pháp: Đại từ chủ ngữ + Tính từ sở hữu' },
+        { week_num: 1, day_num: 4, task_type: 'BÀI TẬP', title: 'Bài tập ngữ pháp: Đại từ chủ ngữ + Tính từ sở hữu' },
+        { week_num: 1, day_num: 4, task_type: 'PHÁT ÂM', title: 'Phát âm: /ə/ – nguyên âm giữa trung tâm, rất ngắn và nhẹ' },
+        { week_num: 1, day_num: 5, task_type: 'TỪ VỰNG', title: 'Học 15 từ – 02. Màu sắc + Đáp lời & thán từ giao tiếp' },
+        { week_num: 1, day_num: 5, task_type: 'PHÁT ÂM', title: 'Phát âm: /iː/ – nguyên âm dài hàng trước, môi dẹt' },
+        { week_num: 1, day_num: 6, task_type: 'TỪ VỰNG', title: 'Học 15 từ – Đáp lời giao tiếp + Đại từ & lượng từ' },
+        { week_num: 1, day_num: 6, task_type: 'PHÁT ÂM', title: 'Phát âm: /v/ – phụ âm xát môi răng hữu thanh' },
+        { week_num: 1, day_num: 7, task_type: 'TỪ VỰNG', title: 'Học 15 từ – Đại từ & lượng từ + 04. Gia đình' },
+        { week_num: 1, day_num: 7, task_type: 'LÝ THUYẾT', title: 'Lý thuyết ngữ pháp: Hiện tại đơn với "have/has"' },
+        { week_num: 1, day_num: 7, task_type: 'BÀI TẬP', title: 'Bài tập ngữ pháp: Hiện tại đơn với "have/has"' },
+        { week_num: 1, day_num: 7, task_type: 'PHÁT ÂM', title: 'Phát âm: /θ/ – phụ âm xát răng không rung' },
+        { week_num: 1, day_num: 7, task_type: 'ÔN TẬP', title: 'Tổng ôn tuần 1 – 5 bộ • 105 từ' }
+      ];
+
+      const sampleVocab = [
+        { topic: '01. Số', word: 'zero', ipa: '/ˈzɪə.rəʊ/', word_type: 'number', meaning: 'số không', example_en: 'The temperature dropped to zero.', example_vi: 'Nhiệt độ đã giảm xuống mức không.' },
+        { topic: '01. Số', word: 'hundred', ipa: '/ˈhʌn.drəd/', word_type: 'number', meaning: 'một trăm', example_en: 'There are a hundred students in the hall.', example_vi: 'Có một trăm sinh viên trong hội trường.' },
+        { topic: '01. Số', word: 'thousand', ipa: '/ˈθaʊ.zənd/', word_type: 'number', meaning: 'một nghìn', example_en: 'This book costs fifty thousand dong.', example_vi: 'Cuốn sách này giá năm mươi nghìn đồng.' },
+        { topic: '02. Màu sắc', word: 'purple', ipa: '/ˈpɜː.pəl/', word_type: 'adj', meaning: 'màu tím', example_en: 'She is wearing a purple jacket.', example_vi: 'Cô ấy đang mặc một chiếc áo khoác màu tím.' },
+        { topic: '04. Gia đình', word: 'relative', ipa: '/ˈrel.ə.tɪv/', word_type: 'noun', meaning: 'họ hàng, người thân', example_en: 'We visit our relatives during Tet.', example_vi: 'Chúng tôi đi thăm họ hàng vào dịp Tết.' }
+      ];
+
+      const sampleDrills = [
+        { day_num: 1, topic: 'Động từ to be', vi_sentence: 'Tôi là một sinh viên năm nhất.', en_answer: 'I am a freshman.', alt_answers: "I'm a freshman.|I am a first-year student.", grammar_note: 'Chủ ngữ I đi với động từ to be là am.' },
+        { day_num: 1, topic: 'Động từ to be', vi_sentence: 'Họ không ở trong phòng học.', en_answer: 'They are not in the classroom.', alt_answers: "They aren't in the classroom.|They're not in the classroom.", grammar_note: 'Phủ định của are là are not (aren’t).' },
+        { day_num: 4, topic: 'Tính từ sở hữu', vi_sentence: 'Chiếc xe của anh ấy màu đen.', en_answer: 'His car is black.', alt_answers: '', grammar_note: 'Tính từ sở hữu His đứng trước danh từ car.' },
+        { day_num: 7, topic: 'Hiện tại đơn have/has', vi_sentence: 'Gia đình tôi có bốn người.', en_answer: 'My family has four people.', alt_answers: 'There are four people in my family.', grammar_note: 'Danh từ tập hợp số ít My family chia động từ là has.' }
+      ];
+
+      const sampleKnowledge = [
+        { category: 'NGỮ PHÁP', title: 'Động từ "to be" (am / is / are)', summary: 'Dùng để giới thiệu tên, nghề nghiệp, tuổi tác, tính chất hoặc vị trí.', formula_or_guide: 'I + am | He/She/It + is | You/We/They + are', examples: 'Ví dụ: I am ready. / She is an engineer.' },
+        { category: 'PHÁT ÂM', title: 'Nguyên âm ngắn /ɪ/ vs Nguyên âm dài /iː/', summary: '/ɪ/ đọc ngắn, dứt khoát, thả lỏng môi. /iː/ kéo dài, khóe miệng căng sang hai bên như đang cười.', formula_or_guide: 'ship /ʃɪp/ (con tàu) ≠ sheep /ʃiːp/ (con cừu)', examples: 'sit /sɪt/ – seat /siːt/ | live /lɪv/ – leave /liːv/' }
+      ];
+
+      await db.from('roadmap_tasks').insert(week1Tasks);
+      await db.from('vocabulary_bank').insert(sampleVocab);
+      await db.from('translation_drills').insert(sampleDrills);
+      await db.from('knowledge_base').insert(sampleKnowledge);
+
+      btn.classList.add('hidden');
+      await checkConnectionAndStats();
+      await loadRoadmapByWeek();
+      await loadDrills();
+      await loadVocab();
+      await loadKnowledge();
+      alert('Đã nạp thành công dữ liệu Tuần 1 lên Cloud Supabase!');
+    }
+
+    // TRÌNH NHẬP DỮ LIỆU HÀNG LOẠT
+    async function importDrills() {
+      const lines = document.getElementById('import-drills-text').value.trim().split('\n').filter(Boolean);
+      if (!lines.length) return;
+      const rows = lines.map(line => {
+        const [day, topic, vi, en, alt] = line.split('|').map(s => s.trim());
+        return { day_num: parseInt(day) || 1, topic: topic || 'Luyện dịch', vi_sentence: vi, en_answer: en, alt_answers: alt || '' };
+      }).filter(r => r.vi_sentence && r.en_answer);
+
+      const { error } = await db.from('translation_drills').insert(rows);
+      if (!error) {
+        document.getElementById('import-drills-text').value = '';
+        await loadDrills();
+        alert(`Đã lưu ${rows.length} câu luyện dịch lên Cloud!`);
+      }
+    }
+
+    async function importVocab() {
+      const lines = document.getElementById('import-vocab-text').value.trim().split('\n').filter(Boolean);
+      if (!lines.length) return;
+      const rows = lines.map(line => {
+        const [topic, word, ipa, word_type, meaning, example_en, example_vi] = line.split('|').map(s => s.trim());
+        return { topic: topic || 'Chung', word, ipa, word_type, meaning, example_en, example_vi };
+      }).filter(r => r.word && r.meaning);
+
+      const { error } = await db.from('vocabulary_bank').insert(rows);
+      if (!error) {
+        document.getElementById('import-vocab-text').value = '';
+        await loadVocab();
+        alert(`Đã lưu ${rows.length} từ vựng lên Cloud!`);
+      }
+    }
+
+    async function importTasks() {
+      const lines = document.getElementById('import-tasks-text').value.trim().split('\n').filter(Boolean);
+      if (!lines.length) return;
+      const rows = lines.map(line => {
+        const [week_num, day_num, task_type, title] = line.split('|').map(s => s.trim());
+        return { week_num: parseInt(week_num) || 1, day_num: parseInt(day_num) || 1, task_type: (task_type || 'TỪ VỰNG').toUpperCase(), title };
+      }).filter(r => r.title);
+
+      const { error } = await db.from('roadmap_tasks').insert(rows);
+      if (!error) {
+        document.getElementById('import-tasks-text').value = '';
+        await checkConnectionAndStats();
+        await loadRoadmapByWeek();
+        alert(`Đã lưu ${rows.length} nhiệm vụ lộ trình lên Cloud!`);
+      }
+    }
+
+    // CHUYỂN TAB
+    function switchTab(tabName) {
+      document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden'));
+      document.getElementById(`view-${tabName}`).classList.remove('hidden');
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.className = 'tab-btn px-4 py-2 rounded-xl font-semibold text-sm bg-white text-slate-600 hover:bg-slate-100 whitespace-nowrap';
+      });
+      document.getElementById(`tab-${tabName}`).className = 'tab-btn px-4 py-2 rounded-xl font-semibold text-sm bg-emerald-600 text-white whitespace-nowrap';
+    }
+  </script>
+</body>
+</html>
